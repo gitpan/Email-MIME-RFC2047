@@ -1,10 +1,12 @@
 package Email::MIME::RFC2047::Encoder;
-our $VERSION = '0.89_01';
+our $VERSION = '0.89_02';
 
 use strict;
 
 use Encode ();
 use MIME::Base64 ();
+
+my $rfc_specials = '()<>\[\]:;\@\\,."';
 
 sub new {
     my $package = shift;
@@ -147,7 +149,7 @@ sub _finish_buffer {
     $$result .= ' ' if $$result ne '';
 
     if($buffer_type eq 'quoted') {
-        if($$buffer =~ /[()<>@,;:\\".\[\]]/) {
+        if($$buffer =~ /[$rfc_specials]/) {
             # use quoted string if buffer contains special chars
             $$buffer =~ s/[\\"]/\\$&/g;
             

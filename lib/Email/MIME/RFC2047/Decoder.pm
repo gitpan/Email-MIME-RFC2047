@@ -1,17 +1,19 @@
 package Email::MIME::RFC2047::Decoder;
-our $VERSION = '0.89_01';
+our $VERSION = '0.89_02';
 
 use strict;
 
 use Encode ();
 use MIME::Base64 ();
 
-# Regex for encoded words including leading whitespace.
+my $rfc_specials = '()<>\[\]:;\@\\,."';
+
+# Regex for encoded words.
 # This also checks the validity of base64 encoded data because MIME::Base64
 # silently ignores invalid characters.
-# Captures ($ws, $encoding, $content_b, $content_q)
-my $encoded_word_re = qr/
-    ( ^ | \s+ )
+# Captures ($encoding, $content_b, $content_q)
+my $encoded_word_text_re = qr/
+    (?: ^ | (?<= \s ) )
     = \? ( [\w-]+ ) \?
     (?:
         [Bb] \?
@@ -25,7 +27,27 @@ my $encoded_word_re = qr/
         ( [^?\x00-\x20\x7f-\x{ffff}]+ )
     )
     \? =
-    (?= \z | \s+ )
+    (?= \z | \s )
+/x;
+
+# Same as $encoded_word_text_re but excluding RFC 822 special chars
+# Also matches after and before special chars
+my $encoded_word_phrase_re = qr/
+    (?: ^ | (?<= [\s$rfc_specials] ) )
+    = \? ( [\w-]+ ) \?
+    (?:
+        [Bb] \?
+        (
+            (?:
+                [A-Za-z0-9+\/]{2}
+                (?: == | [A-Za-z0-9+\/] [A-Za-z0-9+\/=] )
+            )+
+        ) |
+        [Qq] \?
+        ( [^?\x00-\x20$rfc_specials\x7f-\x{ffff}]+ )
+    )
+    \? =
+    (?= \z | [\s$rfc_specials] )
 /x;
 
 my $quoted_string_re = qr/
@@ -48,40 +70,39 @@ sub new {
 }
 
 sub decode_text {
-    my ($self, $encoded) = @_;
+    my $self = shift;
 
-    return $self->_decode('text', $encoded);
+    return $self->_decode('text', @_);
 }
 
 sub decode_phrase {
-    my ($self, $encoded) = @_;
+    my $self = shift;
 
-    return $self->_decode('phrase', $encoded);
+    return $self->_decode('phrase', @_);
 }
 
 sub _decode {
     my ($self, $mode, $encoded) = @_;
+    my $encoded_ref = ref($encoded) ? $encoded : \$encoded;
 
     my $result = '';
-    my $pos = 0;
     my $enc_flag;
+    # use shortest match on any characters we don't want to decode
     my $regex = $mode eq 'phrase' ?
-        qr/$encoded_word_re|$quoted_string_re/ :
-        $encoded_word_re;
+        qr/([^$rfc_specials]*?)($encoded_word_phrase_re|$quoted_string_re)/ :
+        qr/(.*?)($encoded_word_text_re)/s;
 
-    while($encoded =~ /\G(.*?)($regex)/gs) {
+    while($$encoded_ref =~ /\G$regex/cg) {
         my ($text, $match,
-            $ws, $encoding, $b_content, $q_content,
+            $encoding, $b_content, $q_content,
             $qs_content) =
             ($1, $2, $3, $4, $5, $6, $7);
-        $pos = pos($encoded);
-
-        $result .= $text;
 
         if(defined($encoding)) {
             # encoded words shouldn't be longer than 75 chars but
             # let's allow up to 255 chars
-            if(length($match) - length($ws) > 255) {
+            if(length($match) > 255) {
+                $result .= $text;
                 $result .= $match;
                 $enc_flag = undef;
                 last;
@@ -112,19 +133,22 @@ sub _decode {
             if($@) {
                 warn($@);
                 # display raw encoded word in case of errors
+                $result .= $text;
                 $result .= $match;
                 $enc_flag = undef;
                 last;
             }
 
             # ignore whitespace between encoded words
-            $result .= $ws unless $enc_flag && $text eq '';
+            $result .= $text if !$enc_flag || $text =~ /\S/;
 
             $result .= $chunk;
 
             $enc_flag = 1;
         }
         else {
+            $result .= $text;
+
             # quoted string, unquote
             $qs_content =~ s/\\(.)/$1/gs;
             $result .= $qs_content;
@@ -133,9 +157,12 @@ sub _decode {
         }
     }
 
-    $result .= substr($encoded, $pos);
+    $regex = $mode eq 'phrase' ?
+        qr/[^$rfc_specials]+/ :
+        qr/.+/s;
+    $result .= $& if $$encoded_ref =~ /\G$regex/cg;
 
-    # normalize    
+    # normalize whitespace
     $result =~ s/^\s+//;
     $result =~ s/\s+\z//;
     $result =~ s/\s+/ /g;
@@ -185,6 +212,9 @@ Creates a new decoder object.
 Decodes any MIME header field for which the field body is defined as '*text'
 (as defined by RFC 822), for example, any Subject or Comments header field.
 
+$encoded_text can also be a reference to a scalar. In this case the scalar
+is processed starting from the current search position. See L<perlfunc/pos>.
+ 
 The resulting string is trimmed and any whitespace is collapsed.
 
 =head2 decode_phrase
@@ -195,7 +225,10 @@ Decodes any 'phrase' token (as defined by RFC 822) in a MIME header field,
 for example, one that precedes an address in a From, To, or Cc header.
 
 This method works like I<decode_text> but additionally unquotes any
-'quoted-strings'.
+'quoted-strings'. It also stops at any special character as defined by
+RFC 822. If $encoded_phrase is a reference to a scalar the current search
+position is set accordingly. This is helpful when parsing RFC 822 email
+addresses.
 
 =head1 AUTHOR
 

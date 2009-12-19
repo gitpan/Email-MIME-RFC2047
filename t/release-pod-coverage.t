@@ -10,7 +10,7 @@ BEGIN {
 
 use Test::More;
 
-eval "use Test::Pod::Coverage 1.08 tests => 2";
+eval "use Test::Pod::Coverage 1.08";
 plan skip_all => "Test::Pod::Coverage 1.08 required for testing POD coverage"
   if $@;
 
@@ -18,6 +18,4 @@ eval "use Pod::Coverage::TrustPod";
 plan skip_all => "Pod::Coverage::TrustPod required for testing POD coverage"
   if $@;
 
-my $parms = { coverage_class => 'Pod::Coverage::TrustPod' };
-pod_coverage_ok("Email::MIME::RFC2047::Encoder");
-pod_coverage_ok("Email::MIME::RFC2047::Decoder");
+all_pod_coverage_ok({ coverage_class => 'Pod::Coverage::TrustPod' });
