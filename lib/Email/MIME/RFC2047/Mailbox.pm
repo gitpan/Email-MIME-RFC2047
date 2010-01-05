@@ -1,5 +1,5 @@
 package Email::MIME::RFC2047::Mailbox;
-our $VERSION = '0.89_02';
+our $VERSION = '0.90';
 
 use strict;
 use base qw(Email::MIME::RFC2047::Address);
@@ -7,8 +7,8 @@ use base qw(Email::MIME::RFC2047::Address);
 use Email::MIME::RFC2047::Decoder;
 use Email::MIME::RFC2047::Encoder;
 
-my $domain_part = qr/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/;
-my $addr_spec = qr/[\w.-]+\@$domain_part(?:\.$domain_part)+/;
+my $domain_part_re = qr/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/;
+my $addr_spec_re = qr/[\w+.-]+\@$domain_part_re(?:\.$domain_part_re)+/;
 
 sub new {
     my $class = shift;
@@ -34,22 +34,22 @@ sub parse {
 
     my $mailbox;
 
-    if($$string_ref =~ /\G\s*($addr_spec)\s*/cg) {
+    if($$string_ref =~ /\G\s*($addr_spec_re)\s*/cg) {
         $mailbox = $class->new($1);
     }
     else {
         $decoder ||= Email::MIME::RFC2047::Decoder->new();
         my $name = $decoder->decode_phrase($string_ref);
 
-        $$string_ref =~ /\G<\s*($addr_spec)\s*>\s*/cg
-            or die("can't parse mailbox");
+        $$string_ref =~ /\G<\s*($addr_spec_re)\s*>\s*/cg
+            or return $class->_parse_error($string_ref, 'mailbox');
         my $addr_spec = $1;
 
         $mailbox = $class->new(name => $name, address => $addr_spec);
     }
 
     if(!ref($string) && pos($string) < length($string)) {
-        die("invalid characters after mailbox\n");
+        return $class->_parse_error($string_ref);
     }
 
     return $mailbox;
@@ -78,16 +78,19 @@ sub format {
 
     my $name = $self->{name};
     my $address = $self->{address};
+    defined($address) && $address =~ /^$addr_spec_re\z/
+        or die ("invalid email address");
+
     my $result;
 
-    if(defined($name)) {
+    if(!defined($name) || $name eq '') {
+        $result = $address;
+    }
+    else {
         $encoder ||= Email::MIME::RFC2047::Encoder->new();
         my $encoded_name = $encoder->encode_phrase($name);
 
         $result = "$encoded_name <$address>";
-    }
-    else {
-        $result = $address;
     }
 
     return $result;
@@ -161,7 +164,7 @@ Gets or sets the email address of the mailbox.
 
 Returns the formatted mailbox string for use in a message header.
 
-$encoder is an optional Email::MIME::RFC2047::Encoder object used for
+$encoder is an optional L<Email::MIME::RFC2047::Encoder> object used for
 encoding display names with non-ASCII characters.
 
 =head1 AUTHOR

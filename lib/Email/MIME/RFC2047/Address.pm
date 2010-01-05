@@ -1,15 +1,16 @@
 package Email::MIME::RFC2047::Address;
-our $VERSION = '0.89_02';
+our $VERSION = '0.90';
 
 use strict;
+use base qw(Email::MIME::RFC2047::Parser);
 
 use Email::MIME::RFC2047::Decoder;
 use Email::MIME::RFC2047::Group;
 use Email::MIME::RFC2047::Mailbox;
 use Email::MIME::RFC2047::MailboxList;
 
-my $domain_part = qr/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/;
-my $addr_spec = qr/[\w.-]+\@$domain_part(?:\.$domain_part)+/;
+my $domain_part_re = qr/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/;
+my $addr_spec_re = qr/[\w+.-]+\@$domain_part_re(?:\.$domain_part_re)+/;
 
 sub parse {
     my ($class, $string, $decoder) = @_;
@@ -17,26 +18,39 @@ sub parse {
 
     my $address;
 
-    if($$string_ref =~ /\G\s*($addr_spec)\s*/cg) {
+    if($$string_ref =~ /\G\s*($addr_spec_re)\s*/cg) {
         $address = Email::MIME::RFC2047::Mailbox->new($1);
     }
     else {
         $decoder ||= Email::MIME::RFC2047::Decoder->new();
         my $name = $decoder->decode_phrase($string_ref);
 
-        if($$string_ref =~ /\G<\s*($addr_spec)\s*>\s*/cg) {
+        if($$string_ref =~ /\G<\s*($addr_spec_re)\s*>\s*/cg) {
             my $addr_spec = $1;
 
             $address = Email::MIME::RFC2047::Mailbox->new(
-                name    => $name,
                 address => $addr_spec,
             );
+
+            $address->name($name) if $name ne '';
         }
         elsif($$string_ref =~ /\G:/cg) {
-            my $mailbox_list = Email::MIME::RFC2047::MailboxList->parse(
-                $string_ref, $decoder
-            );
-            $$string_ref =~ /\G;\s*/cg or die("can't parse group");
+            return $class->_parse_error($string_ref, 'group name')
+                if $name eq '';
+
+            my $mailbox_list;
+
+            if($$string_ref =~ /\G\s*;\s*/cg) {
+                $mailbox_list = Email::MIME::RFC2047::MailboxList->new();
+            }
+            else {
+                $mailbox_list = Email::MIME::RFC2047::MailboxList->parse(
+                    $string_ref, $decoder
+                );
+
+                $$string_ref =~ /\G;\s*/cg
+                    or return $class->_parse_error($string_ref, 'group');
+            }
 
             $address = Email::MIME::RFC2047::Group->new(
                 name         => $name,
@@ -44,12 +58,12 @@ sub parse {
             );
         }
         else {
-            die("can't parse address");
+            return $class->_parse_error($string_ref, 'address');
         }
     }
 
     if(!ref($string) && pos($string) < length($string)) {
-        die("invalid characters after address\n");
+        return $class->_parse_error($string_ref);
     }
 
     return $address;
@@ -76,8 +90,8 @@ Email::MIME::RFC2047::Address - Handling of MIME encoded addresses
 
 =head1 DESCRIPTION
 
-This is the superclass for Email::MIME::RFC2047::Mailbox and
-Email::MIME::RFC2047::Group.
+This is the superclass for L<Email::MIME::RFC2047::Mailbox> and
+L<Email::MIME::RFC2047::Group>.
 
 =head1 CLASS METHODS
 
@@ -85,8 +99,8 @@ Email::MIME::RFC2047::Group.
 
  my $address = Email::MIME::RFC2047::Address->parse($string, [$decoder])
 
-Parse a RFC 2822 'address'. Returns either a Email::MIME::RFC2047::Mailbox
-or a Email::MIME::RFC2047::Group object.
+Parses a RFC 2822 'address'. Returns either a L<Email::MIME::RFC2047::Mailbox>
+or a L<Email::MIME::RFC2047::Group> object.
 
 =head1 AUTHOR
 

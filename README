@@ -1,11 +1,11 @@
 
 
 This archive contains the distribution Email-MIME-RFC2047, version
-0.89_02:
+0.90:
 
   Correct handling of non-ASCII MIME headers
 
-This software is copyright (c) 2009 by Nick Wellnhofer.
+This software is copyright (c) 2010 by Nick Wellnhofer.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

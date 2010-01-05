@@ -1,7 +1,8 @@
 package Email::MIME::RFC2047::AddressList;
-our $VERSION = '0.89_02';
+our $VERSION = '0.90';
 
 use strict;
+use base qw(Email::MIME::RFC2047::Parser);
 
 use Email::MIME::RFC2047::Decoder;
 use Email::MIME::RFC2047::Address;
@@ -27,7 +28,7 @@ sub parse {
     } while($$string_ref =~ /\G,/cg);
     
     if(!ref($string) && pos($string) < length($string)) {
-        die("invalid characters after address list\n");
+        return $class->_parse_error($string_ref);
     }
 
     return $class->new(@addresses);
@@ -55,6 +56,7 @@ sub push {
 
 sub format {
     my ($self, $encoder) = @_;
+    $encoder ||= Email::MIME::RFC2047::Encoder->new();
 
     return join(', ', map { $_->format($encoder) } @$self);
 }
@@ -92,7 +94,7 @@ This module handles RFC 2822 'address-lists'.
  );
 
 Parse a RFC 2822 'address-list'. Returns a Email::MIME::RFC2047::AddressList
-object.
+object containing L<Email::MIME::RFC2047::Address> items.
 
 =head1 CONSTRUCTOR
 
@@ -123,7 +125,7 @@ Appends items to the address list.
 
 Returns the formatted address list string for use in a message header.
 
-$encoder is an optional Email::MIME::RFC2047::Encoder object used for
+$encoder is an optional L<Email::MIME::RFC2047::Encoder> object used for
 encoding display names with non-ASCII characters.
 
 =head1 AUTHOR

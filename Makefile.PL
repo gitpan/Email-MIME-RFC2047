@@ -11,7 +11,7 @@ WriteMakefile(
   NAME      => 'Email::MIME::RFC2047',
   AUTHOR    => "Nick\ Wellnhofer\ \<wellnhofer\@aevum\.de\>",
   ABSTRACT  => "Correct\ handling\ of\ non\-ASCII\ MIME\ headers",
-  VERSION   => '0.89_02',
+  VERSION   => '0.90',
   EXE_FILES => [ qw() ],
   (eval { ExtUtils::MakeMaker->VERSION(6.31) } ? (LICENSE => 'perl') : ()),
   PREREQ_PM    => {

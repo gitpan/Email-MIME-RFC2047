@@ -12,6 +12,7 @@ lib/Email/MIME/RFC2047/Encoder.pm
 lib/Email/MIME/RFC2047/Group.pm
 lib/Email/MIME/RFC2047/Mailbox.pm
 lib/Email/MIME/RFC2047/MailboxList.pm
+lib/Email/MIME/RFC2047/Parser.pm
 t/address-list-parse.t
 t/decode.t
 t/encode-decode.t

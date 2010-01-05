@@ -1,5 +1,5 @@
 package Email::MIME::RFC2047::Decoder;
-our $VERSION = '0.89_02';
+our $VERSION = '0.90';
 
 use strict;
 
@@ -7,6 +7,7 @@ use Encode ();
 use MIME::Base64 ();
 
 my $rfc_specials = '()<>\[\]:;\@\\,."';
+my $rfc_specials_no_quote = '()<>\[\]:;\@\\,.';
 
 # Regex for encoded words.
 # This also checks the validity of base64 encoded data because MIME::Base64
@@ -33,7 +34,7 @@ my $encoded_word_text_re = qr/
 # Same as $encoded_word_text_re but excluding RFC 822 special chars
 # Also matches after and before special chars
 my $encoded_word_phrase_re = qr/
-    (?: ^ | (?<= [\s$rfc_specials] ) )
+    (?: ^ | (?<= [\s$rfc_specials_no_quote] ) )
     = \? ( [\w-]+ ) \?
     (?:
         [Bb] \?
@@ -47,7 +48,7 @@ my $encoded_word_phrase_re = qr/
         ( [^?\x00-\x20$rfc_specials\x7f-\x{ffff}]+ )
     )
     \? =
-    (?= \z | [\s$rfc_specials] )
+    (?= \z | [\s$rfc_specials_no_quote] )
 /x;
 
 my $quoted_string_re = qr/
@@ -147,11 +148,19 @@ sub _decode {
             $enc_flag = 1;
         }
         else {
-            $result .= $text;
+            # quoted string
 
-            # quoted string, unquote
+            $result .= $text;
+            
+            # make sure there is whitespace before the quoted string
+            $result .= ' ';
+
+            # unquote
             $qs_content =~ s/\\(.)/$1/gs;
             $result .= $qs_content;
+
+            # make sure there is whitespace after the quoted string
+            $result .= ' ';
 
             $enc_flag = undef;
         }
@@ -227,8 +236,8 @@ for example, one that precedes an address in a From, To, or Cc header.
 This method works like I<decode_text> but additionally unquotes any
 'quoted-strings'. It also stops at any special character as defined by
 RFC 822. If $encoded_phrase is a reference to a scalar the current search
-position is set accordingly. This is helpful when parsing RFC 822 email
-addresses.
+position is set accordingly. This is helpful when parsing RFC 822 address
+headers.
 
 =head1 AUTHOR
 

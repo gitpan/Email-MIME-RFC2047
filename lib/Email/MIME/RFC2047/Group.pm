@@ -1,5 +1,5 @@
 package Email::MIME::RFC2047::Group;
-our $VERSION = '0.89_02';
+our $VERSION = '0.90';
 
 use strict;
 use base qw(Email::MIME::RFC2047::Address);
@@ -28,15 +28,27 @@ sub _parse {
     my $string_ref = ref($string) ? $string : \$string;
 
     $decoder ||= Email::MIME::RFC2047::Decoder->new();
+
     my $name = $decoder->decode_phrase($string_ref);
+    return $class->_parse_error($string_ref, 'group name')
+        if $name eq '';
 
-    $$string_ref =~ /\G:/cg or die("can't parse group");
+    $$string_ref =~ /\G:/cg
+        or return $class->_parse_error($string_ref, 'group');
 
-    my $mailbox_list = Email::MIME::RFC2047::MailboxList->parse(
-        $string_ref, $decoder
-    );
+    my $mailbox_list;
+    
+    if($$string_ref =~ /\G\s*;\s*/cg) {
+        $mailbox_list = Email::MIME::RFC2047::MailboxList->new();
+    }
+    else {
+        $mailbox_list = Email::MIME::RFC2047::MailboxList->parse(
+            $string_ref, $decoder
+        );
 
-    $$string_ref =~ /\G;\s*/cg or die("can't parse group");
+        $$string_ref =~ /\G;\s*/cg
+            or return $class->_parse_error($string_ref, 'group');
+    }
 
     my $group = $class->new(
         name         => $name,
@@ -44,7 +56,7 @@ sub _parse {
     );
 
     if(!ref($string) && pos($string) < length($string)) {
-        die("invalid characters after group\n");
+        return $class->_parse_error($string_ref);
     }
 
     return $group;
@@ -72,11 +84,17 @@ sub format {
     my ($self, $encoder) = @_;
     $encoder ||= Email::MIME::RFC2047::Encoder->new();
 
-    return
-        $encoder->encode_phrase($self->{name}) .
-        ': ' .
-        $self->{mailbox_list}->format($encoder) .
-        ';';
+    my $name = $self->{name};
+    die("empty group name") if !defined($name) || $name eq '';
+
+    my $result = $encoder->encode_phrase($name) . ': ';
+
+    my $mailbox_list = $self->{mailbox_list};
+    $result .= $mailbox_list->format($encoder) if $mailbox_list;
+
+    $result .= ';';
+
+    return $result;
 }
 
 1;
@@ -135,7 +153,7 @@ Gets or sets the mailbox list of the group.
 
 Returns the formatted string for use in a message header.
 
-$encoder is an optional Email::MIME::RFC2047::Encoder object used for
+$encoder is an optional L<Email::MIME::RFC2047::Encoder> object used for
 encoding display names with non-ASCII characters.
 
 =head1 AUTHOR

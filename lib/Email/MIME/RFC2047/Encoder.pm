@@ -1,5 +1,5 @@
 package Email::MIME::RFC2047::Encoder;
-our $VERSION = '0.89_02';
+our $VERSION = '0.90';
 
 use strict;
 

@@ -10,4 +10,6 @@ meta-spec:
 name: Email-MIME-RFC2047
 requires:
   perl: 5.008
-version: 0.89_02
+resources:
+  repository: http://github.com/nwellnhof/Email-MIME-RFC2047
+version: 0.90
