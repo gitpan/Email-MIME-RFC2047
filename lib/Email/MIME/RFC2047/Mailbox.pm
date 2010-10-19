@@ -1,5 +1,7 @@
 package Email::MIME::RFC2047::Mailbox;
-our $VERSION = '0.90';
+BEGIN {
+  $Email::MIME::RFC2047::Mailbox::VERSION = '0.91';
+}
 
 use strict;
 use base qw(Email::MIME::RFC2047::Address);
@@ -8,7 +10,11 @@ use Email::MIME::RFC2047::Decoder;
 use Email::MIME::RFC2047::Encoder;
 
 my $domain_part_re = qr/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/;
-my $addr_spec_re = qr/[\w+.-]+\@$domain_part_re(?:\.$domain_part_re)+/;
+my $addr_spec_re   = qr{
+    [\w&'*+.\/=?^{}~-]+
+    \@
+    $domain_part_re (?: \. $domain_part_re)+
+}x;
 
 sub new {
     my $class = shift;

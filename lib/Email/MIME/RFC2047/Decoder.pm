@@ -1,5 +1,7 @@
 package Email::MIME::RFC2047::Decoder;
-our $VERSION = '0.90';
+BEGIN {
+  $Email::MIME::RFC2047::Decoder::VERSION = '0.91';
+}
 
 use strict;
 
@@ -106,7 +108,7 @@ sub _decode {
                 $result .= $text;
                 $result .= $match;
                 $enc_flag = undef;
-                last;
+                next;
             }
 
             my $content;
@@ -137,7 +139,7 @@ sub _decode {
                 $result .= $text;
                 $result .= $match;
                 $enc_flag = undef;
-                last;
+                next;
             }
 
             # ignore whitespace between encoded words

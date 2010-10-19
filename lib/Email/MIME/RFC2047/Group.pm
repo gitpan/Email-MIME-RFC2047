@@ -1,5 +1,7 @@
 package Email::MIME::RFC2047::Group;
-our $VERSION = '0.90';
+BEGIN {
+  $Email::MIME::RFC2047::Group::VERSION = '0.91';
+}
 
 use strict;
 use base qw(Email::MIME::RFC2047::Address);

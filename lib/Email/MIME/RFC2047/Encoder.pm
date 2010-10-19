@@ -1,5 +1,7 @@
 package Email::MIME::RFC2047::Encoder;
-our $VERSION = '0.90';
+BEGIN {
+  $Email::MIME::RFC2047::Encoder::VERSION = '0.91';
+}
 
 use strict;
 
@@ -173,6 +175,8 @@ sub _finish_buffer {
     }
 
     $$buffer = '';
+
+    return;
 }
 
 1;
@@ -231,7 +235,7 @@ If only I<method> is omitted it defaults to 'B'.
 Encodes a string that may replace a sequence of 'text' tokens (as defined by
 RFC 822) in any Subject or Comments header field, any extension message header
 field, or any MIME body part field for which the field body is defined as
-'*text'.
+'*text'. $string is expected to be an unencoded perl string.
 
 This method tries to use the MIME encoding for as few characters of the
 input string as possible. So the result may consist of a mix of

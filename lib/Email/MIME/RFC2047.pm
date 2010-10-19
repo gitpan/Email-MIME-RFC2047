@@ -1,5 +1,9 @@
 package Email::MIME::RFC2047;
-our $VERSION = '0.90';
+BEGIN {
+  $Email::MIME::RFC2047::VERSION = '0.91';
+}
+
+use strict;
 
 1;
 

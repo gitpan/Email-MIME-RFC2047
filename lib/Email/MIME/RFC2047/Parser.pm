@@ -1,5 +1,7 @@
 package Email::MIME::RFC2047::Parser;
-our $VERSION = '0.90';
+BEGIN {
+  $Email::MIME::RFC2047::Parser::VERSION = '0.91';
+}
 
 use strict;
 
